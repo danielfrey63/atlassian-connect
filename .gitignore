@@ -1,0 +1,49 @@
+# Node/Playwright artifacts
+node_modules/
+output/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+Thumbs.db
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata files
+.DS_Store
+Thumbs.db
+
+# IDE and editor folders/files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# PowerShell scripts output
+*.ps1xml
+*.psm1
+*.psd1
+
+# Kubernetes YAML files (optional ignore if not source controlled)
+*.yaml
+*.yml
+
+# Miscellaneous
+*.swp
+*.tmp
+Alt/
+Public-Route.txt
+auth.json
+page_*.xml
+output
