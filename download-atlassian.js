@@ -20,8 +20,8 @@ Options:
   --help, -h          Show this help message
 
 Examples:
-  node download-page.js https://confluence.sbb.ch 3273443858 --recursive=false --destination="./output"
-  node download-page.js --ask
+  node download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination="./output"
+  node download-atlassian.js --ask
   `);
 }
 
