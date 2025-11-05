@@ -6,23 +6,31 @@ import readline from "readline";
 
 const PROFILE_DIR = path.join(os.tmpdir(), "chromium-playwright-profile");
 
+// ------------------------------
+// CLI
+// ------------------------------
 function printHelp() {
-  console.log(`
-Usage: node download-page.js [options] <page_id> <base_url>
-Parameters:
-  --base_url, -b      Position 1, mandatory base URL of the Confluence site
-  --page_id, -p       Position 2, mandatory page ID to download
-
-Options:
-  --ask, -a           Interactive mode: prompts for all parameters
-  --recursive, -r     Whether to download recursively (default: true)
-  --destination, -d   Directory where to save files (default: current directory)
-  --help, -h          Show this help message
-
-Examples:
-  node download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination="./output"
-  node download-atlassian.js --ask
-  `);
+  console.log(
+    [
+      "Usage:",
+      "  node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [options]",
+      "",
+      "Parameters (positional):",
+      "  <base_url>           Position 1, mandatory base URL of the Confluence site (e.g. https://confluence.sbb.ch)",
+      "  <page_id>            Position 2, mandatory page ID to download",
+      "",
+      "Options:",
+      "  --ask, -a           Interactive mode: prompts for all parameters",
+      "  --recursive, -r     Whether to download recursively (default: true)",
+      "  --destination, -d   Directory where to save files (default: current directory)",
+      "  --format            Export format: xml | md | both (default: xml)",
+      "  --help, -h          Show this help message",
+      "",
+      "Examples:",
+      "  node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=md",
+      "  node sbb-atlassian-connect/download-atlassian.js --ask",
+    ].join("\n")
+  );
 }
 
 function parseArgs(args) {
@@ -33,64 +41,91 @@ function parseArgs(args) {
     base_url: null,
     page_id: null,
     help: false,
+    format: "xml", // xml | md | both
   };
 
   function getValue(arg) {
-    const index = arg.indexOf('=');
+    const index = arg.indexOf("=");
     return index >= 0 ? arg.substring(index + 1) : null;
   }
 
   let positional = [];
-  let expectBaseUrl = false, expectPageId = false, expectDest = false, expectRec = false;
+  let expectBaseUrl = false,
+    expectPageId = false,
+    expectDest = false,
+    expectRec = false,
+    expectFormat = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (expectBaseUrl) { opts.base_url = arg; expectBaseUrl = false; continue; }
-    if (expectPageId) { opts.page_id = arg; expectPageId = false; continue; }
-    if (expectDest) { opts.destination = arg; expectDest = false; continue; }
+    if (expectBaseUrl) {
+      opts.base_url = arg;
+      expectBaseUrl = false;
+      continue;
+    }
+    if (expectPageId) {
+      opts.page_id = arg;
+      expectPageId = false;
+      continue;
+    }
+    if (expectDest) {
+      opts.destination = arg;
+      expectDest = false;
+      continue;
+    }
     if (expectRec) {
       opts.recursive = arg.toLowerCase() === "true";
-      expectRec = false; continue;
+      expectRec = false;
+      continue;
+    }
+    if (expectFormat) {
+      opts.format = (arg || "xml").toLowerCase();
+      expectFormat = false;
+      continue;
     }
 
-    if (arg === '--ask' || arg === '-a') {
+    if (arg === "--ask" || arg === "-a") {
       opts.ask = true;
-    } else if (arg === '--help' || arg === '-h') {
+    } else if (arg === "--help" || arg === "-h") {
       opts.help = true;
-    } else if (arg === '--base_url') {
+    } else if (arg === "--base_url") {
       expectBaseUrl = true;
-    } else if (arg.startsWith('--base_url=')) {
+    } else if (arg.startsWith("--base_url=")) {
       opts.base_url = getValue(arg);
-    } else if (arg === '-b') {
+    } else if (arg === "-b") {
       expectBaseUrl = true;
-    } else if (arg.startsWith('-b=')) {
+    } else if (arg.startsWith("-b=")) {
       opts.base_url = getValue(arg);
-    } else if (arg === '--page_id') {
+    } else if (arg === "--page_id") {
       expectPageId = true;
-    } else if (arg.startsWith('--page_id=')) {
+    } else if (arg.startsWith("--page_id=")) {
       opts.page_id = getValue(arg);
-    } else if (arg === '-p') {
+    } else if (arg === "-p") {
       expectPageId = true;
-    } else if (arg.startsWith('-p=')) {
+    } else if (arg.startsWith("-p=")) {
       opts.page_id = getValue(arg);
-    } else if (arg === '--recursive') {
+    } else if (arg === "--recursive") {
       expectRec = true;
-    } else if (arg.startsWith('--recursive=')) {
+    } else if (arg.startsWith("--recursive=")) {
       const val = getValue(arg);
       opts.recursive = val ? val.toLowerCase() === "true" : true;
-    } else if (arg === '-r') {
+    } else if (arg === "-r") {
       expectRec = true;
-    } else if (arg.startsWith('-r=')) {
+    } else if (arg.startsWith("-r=")) {
       const val = getValue(arg);
       opts.recursive = val ? val.toLowerCase() === "true" : true;
-    } else if (arg === '--destination') {
+    } else if (arg === "--destination") {
       expectDest = true;
-    } else if (arg.startsWith('--destination=')) {
+    } else if (arg.startsWith("--destination=")) {
       opts.destination = getValue(arg) || opts.destination;
-    } else if (arg === '-d') {
+    } else if (arg === "-d") {
       expectDest = true;
-    } else if (arg.startsWith('-d=')) {
+    } else if (arg.startsWith("-d=")) {
       opts.destination = getValue(arg) || opts.destination;
+    } else if (arg === "--format") {
+      expectFormat = true;
+    } else if (arg.startsWith("--format=")) {
+      opts.format = (getValue(arg) || "xml").toLowerCase();
     } else {
       positional.push(arg);
     }
@@ -104,18 +139,39 @@ function parseArgs(args) {
     opts.page_id = positional.shift();
   }
 
+  // Normalize format
+  if (!["xml", "md", "both"].includes(opts.format)) {
+    opts.format = "xml";
+  }
+
   return opts;
 }
 
 function prompt(question) {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
-  return new Promise(resolve => rl.question(question, ans => {
-    rl.close();
-    resolve(ans);
-  }));
+  return new Promise((resolve) =>
+    rl.question(question, (ans) => {
+      rl.close();
+      resolve(ans);
+    })
+  );
+}
+
+// ------------------------------
+// Helpers
+// ------------------------------
+function sanitizeTitle(title) {
+  return title.replace(/[\\/:*?"<>|]/g, "_").split(/[_ ]+/).slice(0, 5).join("_");
+}
+
+function sanitizeFilename(name) {
+  return (name || "")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/,+/g, "_");
 }
 
 async function fetchChildren(pageId, baseUrl, page) {
@@ -128,19 +184,311 @@ async function fetchChildren(pageId, baseUrl, page) {
   }, url);
   const respJson = JSON.parse(respText);
   // Return array of child page objects (id, title)
-  return (respJson.results || []).map(child => ({
+  return (respJson.results || []).map((child) => ({
     id: child.id,
-    title: child.title
+    title: child.title,
   }));
 }
 
-function sanitizeTitle(title) {
-  return title.replace(/[\\/:*?"<>|]/g, "_").split(/[_ ]+/).slice(0, 5).join("_");
+// ------------------------------
+// MD conversion executed in browser
+// ------------------------------
+async function convertXmlToMarkdown(page, xml) {
+  const result = await page.evaluate((xmlText) => {
+    function parseXmlWithNamespaces(xmlInput) {
+      const withNs =
+        '<?xml version="1.0"?>' +
+        '<root xmlns:ac="http://atlassian.com/content" xmlns:ri="http://atlassian.com/resource">' +
+        xmlInput +
+        "</root>";
+      const parser = new DOMParser();
+      let doc = parser.parseFromString(withNs, "application/xml");
+      const parserErr = doc.querySelector("parsererror");
+      if (parserErr) {
+        // Fallback: parse as HTML to still traverse content
+        const htmlDoc = parser.parseFromString(xmlInput, "text/html");
+        return { doc: htmlDoc, isHtml: true };
+      }
+      return { doc, isHtml: false };
+    }
+
+    const refs = []; // { type: 'attachment'|'external', name, url }
+    const { doc, isHtml } = parseXmlWithNamespaces(xmlText);
+
+    // Utility to get text content
+    function getText(node) {
+      return node ? (node.textContent || "").trim() : "";
+    }
+
+    // Handle ac:image
+    function handleAcImage(node) {
+      const attach = node.querySelector("ri\\:attachment");
+      const url = node.querySelector("ri\\:url");
+      const alt = node.getAttribute("alt") || getText(node);
+      if (attach) {
+        const name = attach.getAttribute("ri:filename") || attach.getAttribute("ri\\:filename") || getText(attach);
+        if (name) {
+          refs.push({ type: "attachment", name });
+          return `![${alt || name}](ATTACH://${name})`;
+        }
+      }
+      if (url) {
+        const u = url.getAttribute("ri:value") || url.getAttribute("ri\\:value") || getText(url);
+        if (u) {
+          refs.push({ type: "external", url: u });
+          return `![${alt || ""}](${u})`;
+        }
+      }
+      return ""; // Unknown image form
+    }
+
+    // Handle ac:link to attachments
+    function handleAcLink(node) {
+      const attach = node.querySelector("ri\\:attachment");
+      const bodyText = node.querySelector("ac\\:plain-text-link-body") || node;
+      const text = getText(bodyText) || "attachment";
+      if (attach) {
+        const name = attach.getAttribute("ri:filename") || attach.getAttribute("ri\\:filename") || getText(attach);
+        if (name) {
+          refs.push({ type: "attachment", name });
+          return `[${text}](ATTACH://${name})`;
+        }
+      }
+      return text;
+    }
+
+    // Handle ac:structured-macro (image variants, thumbnail, view-file)
+    function handleStructuredMacro(node) {
+      const macroName = node.getAttribute("ac:name") || node.getAttribute("ac\\:name") || "";
+      const params = {};
+      node.querySelectorAll("ac\\:parameter").forEach((p) => {
+        const nm = p.getAttribute("ac:name") || p.getAttribute("ac\\:name") || "";
+        params[nm] = getText(p);
+      });
+      const alt = params.alt || "";
+      const nameCandidate = params.attachment || params.file || params.name;
+      const urlCandidate = params.url;
+
+      if (macroName === "image" || macroName === "thumbnail" || macroName === "view-file") {
+        if (nameCandidate) {
+          refs.push({ type: "attachment", name: nameCandidate });
+          return `![${alt || nameCandidate}](ATTACH://${nameCandidate})`;
+        }
+        if (urlCandidate) {
+          refs.push({ type: "external", url: urlCandidate });
+          return `![${alt || ""}](${urlCandidate})`;
+        }
+      }
+      // Default: render inner content with block separation if rich-text-body present
+      const body = node.querySelector("ac\\:rich-text-body");
+      if (body) {
+        return renderChildren(body) + "\n\n";
+      }
+      return renderChildren(node) + "\n\n";
+    }
+
+    // Generic inline formatting
+    function formatInline(node) {
+      const tag = (node.tagName || "").toLowerCase();
+      if (tag === "strong" || tag === "b") return `**${getText(node)}**`;
+      if (tag === "em" || tag === "i") return `*${getText(node)}*`;
+      if (tag === "code") return "`" + getText(node) + "`";
+      return getText(node);
+    }
+
+    // Table rendering
+    function renderTable(tbl) {
+      const rows = Array.from(tbl.querySelectorAll("tr"));
+      if (!rows.length) return "";
+      let md = "";
+      const firstCells = Array.from(rows[0].querySelectorAll("th,td")).map((c) => getText(c));
+      md += "| " + firstCells.join(" | ") + " |\n";
+      md += "|" + firstCells.map(() => " --- ").join("|") + "|\n";
+      for (let i = 1; i < rows.length; i++) {
+        const cells = Array.from(rows[i].querySelectorAll("th,td")).map((c) => getText(c));
+        md += "| " + cells.join(" | ") + " |\n";
+      }
+      return md + "\n";
+    }
+
+    // Helpers to manage block separation and child rendering
+    function isBlockTag(tag) {
+      return [
+        "div","section","article","header","footer","aside","main","nav",
+        "ac:rich-text-body","ac:layout","ac:layout-section","ac:structured-macro"
+      ].includes(tag);
+    }
+
+    function renderChildren(node) {
+      let out = "";
+      node.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out += child.nodeValue;
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          out += renderBlock(child);
+        }
+      });
+      return out;
+    }
+
+    function renderBlock(node) {
+      const tag = (node.tagName || "").toLowerCase();
+
+      // Confluence specific
+      if (tag === "ac:image") return handleAcImage(node);
+      if (tag === "ac:link") return handleAcLink(node);
+      if (tag === "ac:structured-macro") return handleStructuredMacro(node);
+
+      // Headings
+      if (/^h[1-6]$/.test(tag)) {
+        const level = Number(tag.slice(1));
+        return "#".repeat(level) + " " + renderChildren(node).trim() + "\n\n";
+      }
+      if (tag === "p") {
+        const inner = renderChildren(node).trim();
+        return inner ? inner + "\n\n" : "";
+      }
+      if (tag === "br") {
+        return "  \n";
+      }
+      if (tag === "pre") {
+        return "```\n" + (node.textContent || "") + "\n```\n\n";
+      }
+      if (tag === "ul") {
+        return (
+          Array.from(node.querySelectorAll(":scope > li"))
+            .map((li) => "- " + (li.textContent || "").trim())
+            .join("\n") + "\n\n"
+        );
+      }
+      if (tag === "ol") {
+        let idx = 1;
+        return (
+          Array.from(node.querySelectorAll(":scope > li"))
+            .map((li) => (idx++) + ". " + (li.textContent || "").trim())
+            .join("\n") + "\n\n"
+        );
+      }
+      if (tag === "table") {
+        return renderTable(node);
+      }
+      if (tag === "a") {
+        const href = node.getAttribute("href") || "";
+        const text = (node.textContent || "").trim() || href;
+        return href ? `[${text}](${href})` : text;
+      }
+
+      // Inline formats inside blocks
+      const inlineTags = ["strong", "b", "em", "i", "code", "span"];
+      if (inlineTags.includes(tag)) return formatInline(node);
+
+      // Generic Confluence containers: ensure block separation
+      if (isBlockTag(tag)) {
+        const inner = renderChildren(node);
+        return inner ? inner + "\n\n" : "";
+      }
+
+      // Default: recurse into children without forcing block separation
+      return renderChildren(node);
+    }
+
+    // Collect top-level blocks under our synthetic root (XML) or body (HTML)
+    let root = doc.querySelector("root") || doc.body || doc;
+    let md = "";
+    Array.from(root.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        md += renderBlock(child);
+      } else if (child.nodeType === Node.TEXT_NODE) {
+        const t = (child.nodeValue || "").trim();
+        if (t) md += t + "\n\n";
+      }
+    });
+
+    return { markdown: md, refs };
+  }, xml);
+
+  return result;
 }
 
-async function downloadPageInternal(pageId, baseUrl, recursive, destination, parentRelPath, page) {
+// ------------------------------
+// Attachments
+// ------------------------------
+async function fetchAttachments(page, pageId) {
+  const url = `/rest/api/content/${pageId}/child/attachment?limit=1000&expand=version,_links`;
+  const respText = await page.evaluate(async (url) => {
+    const resp = await fetch(url, { credentials: "include" });
+    if (!resp.ok) throw new Error(`Attachment fetch HTTP ${resp.status}`);
+    return await resp.text();
+  }, url);
+  const j = JSON.parse(respText);
+  const results = j.results || [];
+  return results.map((item) => {
+    const title = item.title || "";
+    const download = item._links?.download || "";
+    const contentType = item.metadata?.mediaType || item.type || "";
+    return {
+      title,
+      download, // relative like /download/attachments/ID/filename.png
+      contentType,
+    };
+  });
+}
+
+async function downloadAttachmentBinary(page, fullUrl) {
+  const res = await page.evaluate(async (url) => {
+    const resp = await fetch(url, { credentials: "include" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((acc, b) => acc + String.fromCharCode(b), "")
+    );
+    return {
+      base64,
+      contentType: resp.headers.get("content-type") || "application/octet-stream",
+    };
+  }, fullUrl);
+  return res;
+}
+
+function replaceAttachPlaceholders(markdown, replacements) {
+  let md = markdown;
+  for (const rep of replacements) {
+    const original = rep.originalName;
+    const sanitized = rep.sanitizedName;
+    const encoded = encodeURIComponent(original);
+
+    const local = rep.localRelPath;
+    const server = rep.serverUrl;
+
+    // Replace ATTACH://original
+    md = md.replace(new RegExp(`ATTACH://${escapeRegex(original)}`, "g"), local || server || "");
+    // Replace ATTACH://sanitized
+    md = md.replace(new RegExp(`ATTACH://${escapeRegex(sanitized)}`, "g"), local || server || "");
+    // Replace ATTACH://encoded
+    md = md.replace(new RegExp(`ATTACH://${escapeRegex(encoded)}`, "g"), local || server || "");
+  }
+  return md;
+}
+
+function escapeRegex(s) {
+  return (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// ------------------------------
+// Core download
+// ------------------------------
+async function downloadPageInternal(
+  pageId,
+  baseUrl,
+  recursive,
+  destination,
+  parentRelPath,
+  page,
+  format
+) {
   const targetUrl = `${baseUrl}/pages/viewpage.action?pageId=${pageId}`;
-  console.log(`🌐 Öffne ${targetUrl} …`);
+  console.log(`Opening ${targetUrl} ...`);
 
   await page.goto(targetUrl);
 
@@ -154,12 +502,12 @@ async function downloadPageInternal(pageId, baseUrl, recursive, destination, par
   );
 
   const currentUrl = page.url();
-  console.log(`🔗 Aktuelle URL: ${currentUrl}`);
+  console.log(`Current URL: ${currentUrl}`);
   if (!currentUrl.includes(pageId)) {
-    console.warn(`⚠️ Redirect erkannt, aber pageId bleibt gültig.`);
+    console.warn(`Redirect detected, but pageId remains valid.`);
   }
 
-  console.log("📡 Hole REST-API-Daten im Browserkontext …");
+  console.log("Fetching REST API data in browser context ...");
   const jsonText = await page.evaluate(async (pid) => {
     const url = `/rest/api/content/${pid}?expand=body.storage,version`;
     const resp = await fetch(url, { credentials: "include" });
@@ -168,36 +516,170 @@ async function downloadPageInternal(pageId, baseUrl, recursive, destination, par
   }, pageId);
 
   const data = JSON.parse(jsonText);
-  const xml = data.body.storage.value;
-  const safeTitle = sanitizeTitle(data.title);
-  const baseName = `page_${pageId}_${safeTitle}`;
+  const xml = data.body?.storage?.value || "";
+  const safeTitle = sanitizeTitle(data.title || "");
+  const baseName = `${pageId}_${safeTitle}`;
 
-  // Write XML file at current level: "page_<ID>_5_words.xml"
-  const xmlRelPath = path.join(parentRelPath, `${baseName}.xml`);
-  const xmlFullPath = path.resolve(destination, xmlRelPath);
-  fs.mkdirSync(path.dirname(xmlFullPath), { recursive: true });
-  fs.writeFileSync(xmlFullPath, xml, "utf-8");
+  // Always write XML if format is xml or both
+  if (format === "xml" || format === "both") {
+    const xmlRelPath = path.join(parentRelPath, `${baseName}.xml`);
+    const xmlFullPath = path.resolve(destination, xmlRelPath);
+    fs.mkdirSync(path.dirname(xmlFullPath), { recursive: true });
+    fs.writeFileSync(xmlFullPath, xml, "utf-8");
+    console.log(`Saved XML: ${xmlFullPath}`);
+  }
 
-  console.log(`✅ "${data.title}" gespeichert als ${xmlFullPath}`);
+  // Convert to MD and download assets if requested
+  if (format === "md" || format === "both") {
+    const { markdown: initialMd, refs } = await convertXmlToMarkdown(page, xml);
+
+    const assetsDirRel = path.join(parentRelPath, `${baseName}_assets`);
+    const assetsDirFull = path.resolve(destination, assetsDirRel);
+    fs.mkdirSync(assetsDirFull, { recursive: true });
+
+    // Build attachment list from server
+    let attachments = [];
+    try {
+      attachments = await fetchAttachments(page, pageId);
+    } catch (err) {
+      console.warn(`Could not fetch attachments: ${err.message}`);
+    }
+
+    // Download all attachments to assets dir (ensures embedding even when no inline refs exist)
+    const downloaded = [];
+    for (const item of attachments) {
+      const title = item.title || "";
+      const sanitizedTitle = sanitizeFilename(title);
+      let localRelPath = null;
+      const serverUrl = item.download
+        ? `${baseUrl}${item.download}`
+        : `${baseUrl}/download/attachments/${pageId}/${encodeURIComponent(title)}`;
+
+      if (item.download) {
+        try {
+          const { base64, contentType } = await downloadAttachmentBinary(page, serverUrl);
+          let ext = path.extname(sanitizedTitle) || "";
+          if (!ext) {
+            const ct = (contentType || "").toLowerCase();
+            if (ct.includes("png")) ext = ".png";
+            else if (ct.includes("jpeg") || ct.includes("jpg")) ext = ".jpg";
+            else if (ct.includes("gif")) ext = ".gif";
+            else if (ct.includes("webp")) ext = ".webp";
+            else if (ct.includes("svg")) ext = ".svg";
+            else if (ct.includes("pdf")) ext = ".pdf";
+            else if (ct.includes("bmp")) ext = ".bmp";
+            else ext = ".bin";
+          }
+          const baseFile =
+            sanitizedTitle.match(/\.\w+$/) ? sanitizedTitle : sanitizedTitle + ext;
+          const localFullPath = path.join(assetsDirFull, baseFile);
+          const buf = Buffer.from(base64, "base64");
+          fs.writeFileSync(localFullPath, buf);
+          localRelPath = "./" + path.join(assetsDirRel, baseFile).replace(/\\/g, "/");
+          console.log(`Downloaded attachment: ${title} -> ${localFullPath}`);
+        } catch (err) {
+          console.warn(`Failed to download ${title}: ${err.message}`);
+        }
+      }
+
+      downloaded.push({
+        title,
+        sanitizedTitle,
+        localRelPath,
+        serverUrl,
+        contentType: (item.contentType || "").toLowerCase(),
+      });
+    }
+
+    // Prepare replacements for ATTACH:// placeholders based on refs
+    const replacements = [];
+    const uniqueNames = Array.from(
+      new Set(
+        (refs || [])
+          .filter((r) => r.type === "attachment" && r.name)
+          .map((r) => r.name)
+      )
+    );
+
+    for (const originalName of uniqueNames) {
+      const sanitizedName = sanitizeFilename(originalName);
+      const match =
+        downloaded.find((d) => d.title === originalName) ||
+        downloaded.find((d) => d.sanitizedTitle === sanitizedName);
+
+      const serverUrl =
+        (match && match.serverUrl) ||
+        `${baseUrl}/download/attachments/${pageId}/${encodeURIComponent(originalName)}`;
+
+      const localRelPath = match ? match.localRelPath : null;
+
+      replacements.push({
+        originalName,
+        sanitizedName,
+        localRelPath,
+        serverUrl,
+        success: !!localRelPath,
+      });
+    }
+
+    let finalMd = replaceAttachPlaceholders(initialMd, replacements);
+
+    // Fallback: if there are attachments but no inline refs, append a gallery
+    if (uniqueNames.length === 0 && downloaded.length > 0) {
+      let gallery = "\n\n## Attachments\n\n";
+      const isImage = (d) => {
+        const ext = (d.sanitizedTitle.match(/\.\w+$/) || [""])[0].toLowerCase();
+        return (
+          d.contentType.includes("image/") ||
+          [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"].includes(ext)
+        );
+      };
+      for (const d of downloaded) {
+        const href = d.localRelPath || d.serverUrl || "";
+        if (!href) continue;
+        if (isImage(d)) {
+          gallery += `![${d.title}](${href})\n\n`;
+        } else {
+          gallery += `- [${d.title}](${href})\n`;
+        }
+      }
+      finalMd += gallery;
+    }
+
+    const mdRelPath = path.join(parentRelPath, `${baseName}.md`);
+    const mdFullPath = path.resolve(destination, mdRelPath);
+    fs.mkdirSync(path.dirname(mdFullPath), { recursive: true });
+    fs.writeFileSync(mdFullPath, finalMd, "utf-8");
+    console.log(`Saved MD: ${mdFullPath}`);
+  }
 
   const manifestNode = {
     id: pageId,
     title: data.title,
     url: currentUrl,
-    filepath: xmlRelPath,
-    children: []
+    // Keep manifest filepath pointing to XML to remain compatible with upload-atlassian.js
+    filepath: path.join(parentRelPath, `${baseName}.xml`),
+    children: [],
   };
 
   if (recursive) {
     const children = await fetchChildren(pageId, baseUrl, page);
     if (children.length > 0) {
-      // Create sibling directory to store children: "page_<ID>_5_words"
+      // Create sibling directory to store children: "<ID>_5_words"
       const childDirRel = path.join(parentRelPath, baseName);
       const childDirFull = path.resolve(destination, childDirRel);
       fs.mkdirSync(childDirFull, { recursive: true });
 
       for (const child of children) {
-        const childNode = await downloadPageInternal(child.id, baseUrl, true, destination, childDirRel, page);
+        const childNode = await downloadPageInternal(
+          child.id,
+          baseUrl,
+          true,
+          destination,
+          childDirRel,
+          page,
+          format
+        );
         manifestNode.children.push(childNode);
       }
     }
@@ -206,21 +688,40 @@ async function downloadPageInternal(pageId, baseUrl, recursive, destination, par
   return manifestNode;
 }
 
-async function downloadPage(pageId, baseUrl, recursive, destination, manifest = null, parentRelPath = "") {
-  console.log(`📁 Verwende Profil: ${PROFILE_DIR}`);
+async function downloadPage(
+  pageId,
+  baseUrl,
+  recursive,
+  destination,
+  manifest = null,
+  parentRelPath = "",
+  format = "xml"
+) {
+  console.log(`Using profile: ${PROFILE_DIR}`);
   const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: false,
   });
   const page = await context.newPage();
 
   try {
-    const node = await downloadPageInternal(pageId, baseUrl, recursive, destination, parentRelPath, page);
+    const node = await downloadPageInternal(
+      pageId,
+      baseUrl,
+      recursive,
+      destination,
+      parentRelPath,
+      page,
+      format
+    );
     return node;
   } finally {
     await context.close();
   }
 }
 
+// ------------------------------
+// Main
+// ------------------------------
 async function main() {
   const argv = process.argv.slice(2);
   const opts = parseArgs(argv);
@@ -231,30 +732,43 @@ async function main() {
   }
 
   if (opts.ask) {
-    opts.page_id = await prompt("Page ID: ");
     opts.base_url = await prompt("Base URL: ");
+    opts.page_id = await prompt("Page ID: ");
     const rec = await prompt("Recursive? (true/false, default true): ");
     if (rec.toLowerCase() === "false") opts.recursive = false;
     const dest = await prompt(`Destination? (default: ${process.cwd()}): `);
     if (dest.trim() !== "") opts.destination = dest.trim();
+    const fmt = await prompt("Format (xml|md|both, default xml): ");
+    if (fmt.trim()) {
+      const f = fmt.trim().toLowerCase();
+      if (["xml", "md", "both"].includes(f)) opts.format = f;
+    }
   }
 
   if (!opts.page_id || !opts.base_url) {
-    console.error("❌ Fehlende erforderliche Parameter: page_id und base_url sind obligatorisch.");
+    console.error("Missing required parameters: page_id and base_url are mandatory.");
     printHelp();
     process.exit(1);
   }
 
   try {
-    const manifest = await downloadPage(opts.page_id, opts.base_url, opts.recursive, opts.destination, null, "");
+    const manifest = await downloadPage(
+      opts.page_id,
+      opts.base_url,
+      opts.recursive,
+      opts.destination,
+      null,
+      "",
+      opts.format
+    );
     // Write tree.json manifest after download if recursion enabled
     if (opts.recursive) {
       const manifestPath = path.join(opts.destination, "tree.json");
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
-      console.log(`🗂️ Seitenhierarchie gespeichert als ${manifestPath}`);
+      console.log(`Page hierarchy saved as ${manifestPath}`);
     }
   } catch (err) {
-    console.error(`❌ Exception: ${err.message}`);
+    console.error(`Exception: ${err.message}`);
     printHelp();
     process.exit(2);
   }

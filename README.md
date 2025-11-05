@@ -24,7 +24,7 @@ Skript: [sbb-atlassian-connect/download-atlassian.js](sbb-atlassian-connect/down
 Aufruf (empfohlen):
 
 ```bash
-node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [--recursive=true|false] [--destination=./output] [--ask]
+node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [--recursive=true|false] [--destination=./output] [--format=xml|md|both] [--ask]
 ```
 
 Parameter:
@@ -36,21 +36,33 @@ Optionen:
 
 - `--ask`, `-a` Interaktiver Modus: fragt alle Parameter ab
 - `--recursive`, `-r true`/`false` Ob Kindseiten rekursiv geladen werden (Standard: true)
-- `--destination`, `-d` Zielverzeichnis für XML-Dateien (Standard: aktuelles Verzeichnis)
+- `--destination`, `-d` Zielverzeichnis für Dateien (Standard: aktuelles Verzeichnis)
+- `--format` Exportformat: `xml` | `md` | `both` (Standard: `xml`). Bei `md` werden referenzierte Bilder/Anhänge heruntergeladen und Links im MD auf lokale Assets umgeschrieben.
 - `--help`, `-h` Hilfe anzeigen
 
 Beispiele:
 
 ```bash
+# XML nur
 node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output
+
+# Markdown + Assets
+node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=md
+
+# Beide Formate
+node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=both
+
+# Interaktiv
 node sbb-atlassian-connect/download-atlassian.js --ask
 ```
 
 Ergebnisstruktur:
 
 - Für jede Seite wird die Confluence-„storage“-Repräsentation als XML gespeichert: `page_<ID>_<bis_zu_5_Begriffe>.xml`
+- Optional wird zusätzlich eine Markdown-Datei erzeugt: `page_<ID>_<bis_zu_5_Begriffe>.md`
+- Bei MD-Export werden referenzierte Bilder/Anhänge im Ordner `page_<ID>_<bis_zu_5_Begriffe>_assets` abgelegt; Verweise im MD werden auf relative Pfade (`./page_<...>_assets/<datei>`) umgeschrieben
 - Bei rekursivem Export wird für jeden Knoten zusätzlich ein Ordner mit dem gleichen Basenamen angelegt, der die Kindseiten enthält
-- Eine Manifestdatei `tree.json` beschreibt die komplette Seitenhierarchie inkl. Dateipfade
+- Die Manifestdatei `tree.json` beschreibt die komplette Seitenhierarchie inkl. Dateipfade; der Eintrag `filepath` verweist weiterhin auf die XML-Datei
 
 Technische Details:
 
