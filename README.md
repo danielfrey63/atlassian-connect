@@ -30,7 +30,7 @@ node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [--recursi
 Parameter:
 
 - `<base_url>` Basis-URL der Confluence-Site (z. B. https://confluence.sbb.ch)
-- `<page_id>` Seiten-ID, die exportiert werden soll
+- `<page_id>` Seiten-ID, die exportiert werden soll. Die Seiten-ID ist im URL der Seite ersichtlich oder über die Seiteninformation abrufbar.
 
 Optionen:
 
