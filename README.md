@@ -86,13 +86,13 @@ Modi:
 
 Gemeinsame Optionen:
 
-- `--ask`,` -a` Interaktiver Modus
+- `--ask`, `-a` Interaktiver Modus
 - `--dry-run` Keine Änderungen, nur geplante Aktionen ausgeben
 - `--help`, `-h` Hilfe anzeigen
 
 Update-Modus:
 
-- `--manifest`,` -f` Pfad zur Manifestdatei tree.json (Standard: `./output/tree.json`)
+- `--manifest`, `-f` Pfad zur Manifestdatei tree.json (Standard: `./output/tree.json`)
 - `--source`, `-s` Verzeichnis der XML-Dateien (Standard: Ordner der Manifestdatei)
 - `--page_id`, `-p` Aktualisiert nur eine einzelne Seite und erwartet bei `--source` den Pfad zur konkreten XML-Datei
 
