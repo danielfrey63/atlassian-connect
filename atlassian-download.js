@@ -14,7 +14,7 @@ function printHelp() {
     [
       "Usage (PowerShell, CMD, Shell):",
       "  cd atlassian-connect",
-      "  node download-atlassian.js <base_url> <page_id> [options]",
+      "  node atlassian-download.js <base_url> <page_id> [options]",
       "",
       "Parameters (positional):",
       "  <base_url>           Position 1, mandatory base URL of the Confluence site (e.g. https://confluence.my-company.ch)",
@@ -28,8 +28,8 @@ function printHelp() {
       "  --help, -h          Show this help message",
       "",
       "Examples:",
-      "  node download-atlassian.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=md",
-      "  node download-atlassian.js --ask",
+      "  node atlassian-download.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=md",
+      "  node atlassian-download.js --ask",
     ].join("\n")
   );
 }

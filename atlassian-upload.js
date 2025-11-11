@@ -8,7 +8,7 @@ const PROFILE_DIR = path.join(os.tmpdir(), "chromium-playwright-profile");
 
 function printHelp() {
   console.log(`
-Usage: node upload-atlassian.js [options]
+Usage: node atlassian-upload.js [options]
 
 Modes:
   --mode, -m           update | clone   (default: update)
@@ -33,9 +33,9 @@ Options:
   --help, -h           Show this help message
 
 Examples:
-  node upload-atlassian.js -b https://confluence.sbb.ch --mode=update -f ./output/tree.json -s ./output
-  node upload-atlassian.js -b https://confluence.sbb.ch --page_id=2393644957 -s ./output/page_1336019187_How-to_OpenShift/page_2393644957_High_Availability_Ingress_Traffic_Routing.xml
-  node upload-atlassian.js -b https://confluence.sbb.ch --mode=clone --root_id=123456789 -f ./output/tree.json -s ./output --suffix=Clone
+  node atlassian-upload.js -b https://confluence.sbb.ch --mode=update -f ./output/tree.json -s ./output
+  node atlassian-upload.js -b https://confluence.sbb.ch --page_id=2393644957 -s ./output/page_1336019187_How-to_OpenShift/page_2393644957_High_Availability_Ingress_Traffic_Routing.xml
+  node atlassian-upload.js -b https://confluence.sbb.ch --mode=clone --root_id=123456789 -f ./output/tree.json -s ./output --suffix=Clone
 `);
 }
 
