@@ -1,6 +1,6 @@
 # Kommandozeilentool für den Zugriff auf Confluence
 
-Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [atlassian-download.js](atlassian-download.js) und [atlassian-upload.js](atlassian-upload.js).
+Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [atlassian-download.js](https://github.com/danielfrey63/atlassian-connect/blob/eb0663daf499b0897c4e0ee1736493dfa8aa786f/atlassian-download.js) und [atlassian-upload.js](https://github.com/danielfrey63/atlassian-connect/blob/eb0663daf499b0897c4e0ee1736493dfa8aa786f/atlassian-upload.js).
 
 Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Nach der ersten Anmeldung in Confluence bleibt die Session im Profil bestehen.
 
@@ -66,7 +66,7 @@ Das Browserprofil wird im temporären OS-Verzeichnis unter `chromium-playwright-
 
 ## Download: Seiten und Bäume aus Confluence exportieren
 
-Skript: [atlassian-download.js](atlassian-download.js)
+Skript: [atlassian-download.js](https://github.com/danielfrey63/atlassian-connect/blob/eb0663daf499b0897c4e0ee1736493dfa8aa786f/atlassian-download.js)
 
 Aufruf (empfohlen):
 
@@ -118,7 +118,7 @@ Technische Details:
 
 ## Upload: Inhalte aktualisieren oder als neuen Baum klonen
 
-Skript: [atlassian-upload.js](atlassian-upload.js)
+Skript: [atlassian-upload.js](https://github.com/danielfrey63/atlassian-connect/blob/eb0663daf499b0897c4e0ee1736493dfa8aa786f/atlassian-upload.js)
 
 Grundaufruf:
 
