@@ -24,7 +24,7 @@ function printHelp() {
       "  --ask, -a           Interactive mode: prompts for all parameters",
       "  --recursive, -r     Whether to download recursively (default: true)",
       "  --destination, -d   Directory where to save files (default: current directory)",
-      "  --format, -f       Export format: xml | md | both (default: xml)",
+      "  --format, -f        Export format: xml | md | both (default: xml)",
       "  --help, -h          Show this help message",
       "",
       "Examples:",
@@ -43,6 +43,7 @@ function parseArgs(args) {
     page_id: null,
     help: false,
     format: "xml", // xml | md | both
+    unknown: [],
   };
 
   function getValue(arg) {
@@ -132,7 +133,12 @@ function parseArgs(args) {
     } else if (arg.startsWith("-f=")) {
       opts.format = (getValue(arg) || "xml").toLowerCase();
     } else {
-      positional.push(arg);
+      // Treat any unknown flag (starting with '-') as an error, otherwise a positional argument
+      if (/^-{1,2}[A-Za-z0-9_-]+/.test(arg)) {
+        opts.unknown.push(arg);
+      } else {
+        positional.push(arg);
+      }
     }
   }
 
@@ -817,6 +823,13 @@ async function main() {
       const f = fmt.trim().toLowerCase();
       if (["xml", "md", "both"].includes(f)) opts.format = f;
     }
+  }
+
+  // Validate unknown parameters before proceeding
+  if (opts.unknown && opts.unknown.length > 0) {
+    console.error("Unknown parameter(s): " + opts.unknown.join(", "));
+    printHelp();
+    process.exit(1);
   }
 
   if (!opts.page_id || !opts.base_url) {
