@@ -1,4 +1,4 @@
-# Kommandozeilentool für Zugriffed mod auf Confluence
+# Kommandozeilentool für den Zugriff auf Confluence
 
 Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [download-atlassian.js](atlassian-connect/download-atlassian.js) und [upload-atlassian.js](atlassian-connect/upload-atlassian.js).
 
