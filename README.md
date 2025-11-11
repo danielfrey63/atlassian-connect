@@ -1,13 +1,13 @@
-# sbb-atlassian-connect
+# Kommandozeilentool für Zugriffed mod auf Confluence
 
-Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [sbb-atlassian-connect/download-atlassian.js](sbb-atlassian-connect/download-atlassian.js) und [sbb-atlassian-connect/upload-atlassian.js](sbb-atlassian-connect/upload-atlassian.js).
+Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [download-atlassian.js](atlassian-connect/download-atlassian.js) und [upload-atlassian.js](atlassian-connect/upload-atlassian.js).
 
-Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Nach der ersten Anmeldung in Confluence bleibt die Session im Profil bestehen. Technisch erfolgt dies über [chromium.launchPersistentContext()](sbb-atlassian-connect/download-atlassian.js:211) bzw. [chromium.launchPersistentContext()](sbb-atlassian-connect/upload-atlassian.js:140).
+Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Nach der ersten Anmeldung in Confluence bleibt die Session im Profil bestehen. Technisch erfolgt dies über [chromium.launchPersistentContext()](atlassian-connect/download-atlassian.js:211) bzw. [chromium.launchPersistentContext()](atlassian-connect/upload-atlassian.js:140).
 
 ## Voraussetzungen
 
 - Node.js 18+ und npm
-- Internetzugang auf die Confluence-Instanz (z. B. https://confluence.sbb.ch)
+- Internetzugang auf die Confluence-Instanz (z. B. https://confluence.my-company.ch)
 - Installation der Abhängigkeiten:
 
 ```bash
@@ -19,17 +19,17 @@ Das Browserprofil wird im temporären OS-Verzeichnis unter „chromium-playwrigh
 
 ## Download: Seiten und Bäume aus Confluence exportieren
 
-Skript: [sbb-atlassian-connect/download-atlassian.js](sbb-atlassian-connect/download-atlassian.js)
+Skript: [download-atlassian.js](atlassian-connect/download-atlassian.js)
 
 Aufruf (empfohlen):
 
 ```bash
-node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [--recursive=true|false] [--destination=./output] [--format=xml|md|both] [--ask]
+node atlassian-connect/download-atlassian.js <base_url> <page_id> [--recursive=true|false] [--destination=./output] [--format=xml|md|both] [--ask]
 ```
 
 Parameter:
 
-- `<base_url>` Basis-URL der Confluence-Site (z. B. https://confluence.sbb.ch)
+- `<base_url>` Basis-URL der Confluence-Site (z. B. https://confluence.my-company.ch)
 - `<page_id>` Seiten-ID, die exportiert werden soll. Die Seiten-ID ist im URL der Seite ersichtlich oder über die Seiteninformation abrufbar.
 
 Optionen:
@@ -44,16 +44,16 @@ Beispiele:
 
 ```bash
 # XML nur
-node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output
+node atlassian-connect/download-atlassian.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output
 
 # Markdown + Assets
-node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=md
+node atlassian-connect/download-atlassian.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=md
 
 # Beide Formate
-node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=both
+node atlassian-connect/download-atlassian.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=both
 
 # Interaktiv
-node sbb-atlassian-connect/download-atlassian.js --ask
+node atlassian-connect/download-atlassian.js --ask
 ```
 
 Ergebnisstruktur:
@@ -71,12 +71,12 @@ Technische Details:
 
 ## Upload: Inhalte aktualisieren oder als neuen Baum klonen
 
-Skript: [sbb-atlassian-connect/upload-atlassian.js](sbb-atlassian-connect/upload-atlassian.js)
+Skript: [atlassian-connect/upload-atlassian.js](atlassian-connect/upload-atlassian.js)
 
 Grundaufruf:
 
 ```bash
-node sbb-atlassian-connect/upload-atlassian.js --base_url <base_url> [weitere Optionen]
+node atlassian-connect/upload-atlassian.js --base_url <base_url> [weitere Optionen]
 ```
 
 Modi:
@@ -100,10 +100,10 @@ Beispiele Update:
 
 ```bash
 # gesamten Baum laut Manifest aktualisieren
-node sbb-atlassian-connect/upload-atlassian.js -b https://confluence.sbb.ch --mode=update -f ./output/tree.json -s ./output
+node atlassian-connect/upload-atlassian.js -b https://confluence.my-company.ch --mode=update -f ./output/tree.json -s ./output
 
 # einzelne Seite aktualisieren (XML-Datei angeben)
-node sbb-atlassian-connect/upload-atlassian.js -b https://confluence.sbb.ch --page_id=2393644957 -s ./output/page_1336019187_How-to_OpenShift/page_2393644957_High_Availability_Ingress_Traffic_Routing.xml
+node atlassian-connect/upload-atlassian.js -b https://confluence.my-company.ch --page_id=2393644957 -s ./output/page_1336019187_How-to_OpenShift/page_2393644957_High_Availability_Ingress_Traffic_Routing.xml
 ```
 
 Ergebnisse Update:
@@ -120,7 +120,7 @@ Clone-Modus:
 Beispiel Clone:
 
 ```bash
-node sbb-atlassian-connect/upload-atlassian.js -b https://confluence.sbb.ch --mode=clone --root_id=123456789 -f ./output/tree.json -s ./output --suffix=Clone
+node atlassian-connect/upload-atlassian.js -b https://confluence.my-company.ch --mode=clone --root_id=123456789 -f ./output/tree.json -s ./output --suffix=Clone
 ```
 
 Ergebnisse Clone:
@@ -144,9 +144,9 @@ Ergebnisse Clone:
 
 ## Bekannte Besonderheiten
 
-- Die Hilfeausgabe im Download-Skript zeigt „download-page.js“ – der korrekte Dateiname ist [sbb-atlassian-connect/download-atlassian.js](sbb-atlassian-connect/download-atlassian.js). Ausserdem ist die empfohlene Positionsreihenfolge <base_url> <page_id>.
+- Die Hilfeausgabe im Download-Skript zeigt „download-page.js“ – der korrekte Dateiname ist [atlassian-connect/download-atlassian.js](atlassian-connect/download-atlassian.js). Ausserdem ist die empfohlene Positionsreihenfolge <base_url> <page_id>.
 
 ## Entwicklung
 
-- Abhängigkeiten und Skripte sind in [sbb-atlassian-connect/package.json](sbb-atlassian-connect/package.json) definiert
+- Abhängigkeiten und Skripte sind in [atlassian-connect/package.json](atlassian-connect/package.json) definiert
 - Das Browserprofil wird in einem OS-Temp-Ordner wiederverwendet, sodass lokale Logins erhalten bleiben

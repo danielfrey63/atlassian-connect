@@ -12,23 +12,24 @@ const PROFILE_DIR = path.join(os.tmpdir(), "chromium-playwright-profile");
 function printHelp() {
   console.log(
     [
-      "Usage:",
-      "  node sbb-atlassian-connect/download-atlassian.js <base_url> <page_id> [options]",
+      "Usage (PowerShell, CMD, Shell):",
+      "  cd atlassian-connect",
+      "  node download-atlassian.js <base_url> <page_id> [options]",
       "",
       "Parameters (positional):",
-      "  <base_url>           Position 1, mandatory base URL of the Confluence site (e.g. https://confluence.sbb.ch)",
-      "  <page_id>            Position 2, mandatory page ID to download",
+      "  <base_url>           Position 1, mandatory base URL of the Confluence site (e.g. https://confluence.my-company.ch)",
+      "  <page_id>            Position 2, mandatory page ID to download (see URL of page that contains the ID)",
       "",
       "Options:",
       "  --ask, -a           Interactive mode: prompts for all parameters",
       "  --recursive, -r     Whether to download recursively (default: true)",
       "  --destination, -d   Directory where to save files (default: current directory)",
-      "  --format            Export format: xml | md | both (default: xml)",
+      "  --format, -f       Export format: xml | md | both (default: xml)",
       "  --help, -h          Show this help message",
       "",
       "Examples:",
-      "  node sbb-atlassian-connect/download-atlassian.js https://confluence.sbb.ch 3273443858 --recursive=false --destination=./output --format=md",
-      "  node sbb-atlassian-connect/download-atlassian.js --ask",
+      "  node download-atlassian.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=md",
+      "  node download-atlassian.js --ask",
     ].join("\n")
   );
 }
@@ -125,6 +126,10 @@ function parseArgs(args) {
     } else if (arg === "--format") {
       expectFormat = true;
     } else if (arg.startsWith("--format=")) {
+      opts.format = (getValue(arg) || "xml").toLowerCase();
+    } else if (arg === "-f") {
+      expectFormat = true;
+    } else if (arg.startsWith("-f=")) {
       opts.format = (getValue(arg) || "xml").toLowerCase();
     } else {
       positional.push(arg);
@@ -296,16 +301,59 @@ async function convertXmlToMarkdown(page, xml) {
       return getText(node);
     }
 
-    // Table rendering
+    // Table rendering with explicit <br/> handling inside cells
+    function escapeMdTableCell(text) {
+      return (text || "").replace(/\|/g, "\\|");
+    }
+
+    function renderCell(cell) {
+      let out = "";
+      cell.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out += child.nodeValue || "";
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const tag = (child.tagName || "").toLowerCase();
+          if (tag === "br") {
+            out += "<br/>";
+          } else if (tag === "p") {
+            const inner = renderCell(child).trim();
+            out += inner ? inner + "<br/>" : "";
+          } else if (tag === "strong" || tag === "b" || tag === "em" || tag === "i" || tag === "code" || tag === "span") {
+            out += formatInline(child);
+          } else if (tag === "a") {
+            const href = child.getAttribute("href") || "";
+            const text = (child.textContent || "").trim() || href;
+            out += href ? `[${text}](${href})` : text;
+          } else if (tag === "ul" || tag === "ol") {
+            const isOl = tag === "ol";
+            let idx = 1;
+            const items = Array.from(child.querySelectorAll(":scope > li"))
+              .map((li) => {
+                const t = (li.textContent || "").trim();
+                return t ? (isOl ? `${idx++}. ${t}` : `- ${t}`) : "";
+              })
+              .filter(Boolean);
+            out += items.join("<br/>");
+          } else {
+            // default: recurse into nested elements
+            out += renderCell(child);
+          }
+        }
+      });
+      // Normalize whitespace and consolidate excessive breaks
+      out = out.replace(/\n+/g, " ").replace(/(?:\s*<br\/>\s*){3,}/g, "<br/><br/>");
+      return escapeMdTableCell(out.trim());
+    }
+
     function renderTable(tbl) {
       const rows = Array.from(tbl.querySelectorAll("tr"));
       if (!rows.length) return "";
       let md = "";
-      const firstCells = Array.from(rows[0].querySelectorAll("th,td")).map((c) => getText(c));
+      const firstCells = Array.from(rows[0].querySelectorAll("th,td")).map((c) => renderCell(c));
       md += "| " + firstCells.join(" | ") + " |\n";
       md += "|" + firstCells.map(() => " --- ").join("|") + "|\n";
       for (let i = 1; i < rows.length; i++) {
-        const cells = Array.from(rows[i].querySelectorAll("th,td")).map((c) => getText(c));
+        const cells = Array.from(rows[i].querySelectorAll("th,td")).map((c) => renderCell(c));
         md += "| " + cells.join(" | ") + " |\n";
       }
       return md + "\n";
@@ -537,6 +585,19 @@ async function downloadPageInternal(
     const assetsDirFull = path.resolve(destination, assetsDirRel);
     fs.mkdirSync(assetsDirFull, { recursive: true });
 
+    // Determine which attachments are actually referenced inline
+    const usedOriginalNames = new Set(
+      (refs || [])
+        .filter((r) => r.type === "attachment" && r.name)
+        .map((r) => r.name)
+    );
+    const usedSanitizedNames = new Set(
+      Array.from(usedOriginalNames).map((n) => sanitizeFilename(n))
+    );
+    const usedEncodedNames = new Set(
+      Array.from(usedOriginalNames).map((n) => encodeURIComponent(n))
+    );
+
     // Build attachment list from server
     let attachments = [];
     try {
@@ -545,11 +606,22 @@ async function downloadPageInternal(
       console.warn(`Could not fetch attachments: ${err.message}`);
     }
 
-    // Download all attachments to assets dir (ensures embedding even when no inline refs exist)
+    // Download only attachments that are referenced inline in the page
     const downloaded = [];
     for (const item of attachments) {
       const title = item.title || "";
       const sanitizedTitle = sanitizeFilename(title);
+      const titleEncoded = encodeURIComponent(title);
+
+      // Filter: only process attachments that are referenced (by original, sanitized or encoded name)
+      const isUsed =
+        usedOriginalNames.has(title) ||
+        usedSanitizedNames.has(sanitizedTitle) ||
+        usedEncodedNames.has(titleEncoded);
+      if (!isUsed) {
+        continue;
+      }
+
       let localRelPath = null;
       const serverUrl = item.download
         ? `${baseUrl}${item.download}`
@@ -623,6 +695,8 @@ async function downloadPageInternal(
     }
 
     let finalMd = replaceAttachPlaceholders(initialMd, replacements);
+    // Prepend page title as H1 heading
+    finalMd = `# ${data.title}\n\n` + finalMd;
 
     // Fallback: if there are attachments but no inline refs, append a gallery
     if (uniqueNames.length === 0 && downloaded.length > 0) {
