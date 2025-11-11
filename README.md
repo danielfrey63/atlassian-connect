@@ -2,20 +2,49 @@
 
 Automatisiertes Herunterladen, Aktualisieren und Klonen von Confluence-Seiten über die Browser-Session des angemeldeten Benutzers (Playwright/Chromium). Dieses Toolkit besteht aus zwei Node.js-Skripten: [atlassian-download.js](atlassian-connect/atlassian-download.js) und [atlassian-upload.js](atlassian-connect/atlassian-upload.js).
 
-Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Nach der ersten Anmeldung in Confluence bleibt die Session im Profil bestehen. Technisch erfolgt dies über [chromium.launchPersistentContext()](atlassian-connect/atlassian-download.js:211) bzw. [chromium.launchPersistentContext()](atlassian-connect/atlassian-upload.js:140).
+Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Nach der ersten Anmeldung in Confluence bleibt die Session im Profil bestehen.
 
 ## Voraussetzungen
 
+### Installation von Scoop
+  
+Scoop ist ein einfacher Paket-Manager. Falls nicht vorhanden, kann Scoop unter Windows über die PowerShell installiert werden:
+  
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
+```
+### Installation von Git
+  
+Falls nicht bereits installiert, kann unter Windows Git einfach mit [Scoop](https://scoop.sh/) nachinstalliert werden:
+  
+```bash
+scoop install git
+```
+
+Alternativ kann Git von der offiziellen Webseite herunterladen und installiert werden: [https://git-scm.com](https://git-scm.com).
+
+### Klonen des Repositories
+
+Der ausführbare Code aus dem Repository muss lokal zur Verfügung gestellt werden.
+
+```bash
+git clone git@github.com:danielfrey63/atlassian-connect.git
+cd atlassian-connect
+```
+
+### Projektcode fertig installieren
+
+Zum Ausführen des Codes benötigen wir:
 - Node.js 18+ und npm
 - Internetzugang auf die Confluence-Instanz (z. B. https://confluence.my-company.ch)
-- Installation der Abhängigkeiten:
 
 ```bash
 npm install
 npx playwright install chromium
 ```
 
-Das Browserprofil wird im temporären OS-Verzeichnis unter „chromium-playwright-profile“ abgelegt und beim nächsten Lauf wiederverwendet.
+Das Browserprofil wird im temporären OS-Verzeichnis unter `chromium-playwright-profile` abgelegt und beim nächsten Lauf wiederverwendet.
 
 ## Download: Seiten und Bäume aus Confluence exportieren
 
@@ -24,7 +53,6 @@ Skript: [atlassian-download.js](atlassian-connect/atlassian-download.js)
 Aufruf (empfohlen):
 
 ```bash
-cd atlassian-connect
 node atlassian-download.js <base_url> <page_id> [--recursive=true|false] [--destination=./output] [--format=xml|md|both] [--ask]
 ```
 
@@ -38,7 +66,7 @@ Optionen:
 - `--ask`, `-a` Interaktiver Modus: fragt alle Parameter ab
 - `--recursive`, `-r true`/`false` Ob Kindseiten rekursiv geladen werden (Standard: true)
 - `--destination`, `-d` Zielverzeichnis für Dateien (Standard: aktuelles Verzeichnis)
-- `--format` Exportformat: `xml` | `md` | `both` (Standard: `xml`). Bei `md` werden referenzierte Bilder/Anhänge heruntergeladen und Links im MD auf lokale Assets umgeschrieben.
+- `--format`, `-f` Exportformat: `xml` | `md` | `both` (Standard: `xml`). Bei `md` werden referenzierte Bilder/Anhänge heruntergeladen und Links im MD auf lokale Assets umgeschrieben.
 - `--help`, `-h` Hilfe anzeigen
 
 Beispiele:
@@ -48,7 +76,7 @@ Beispiele:
 node atlassian-connect/atlassian-download.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output
 
 # Markdown + Assets
-node atlassian-connect/atlassian-download.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=md
+node atlassian-connect/atlassian-download.js https://confluence.my-company.ch 3273443858 -r false -d  "./output" -f md
 
 # Beide Formate
 node atlassian-connect/atlassian-download.js https://confluence.my-company.ch 3273443858 --recursive=false --destination=./output --format=both
@@ -114,7 +142,7 @@ Ergebnisse Update:
 Clone-Modus:
 
 - `--root_id`, `-r` ID der Zielseite, unter der der neue Baum angelegt wird (Pflicht)
-- --manifest, `-f` Pfad zur Manifestdatei tree.json (Standard: `./output/tree.json`)
+- `--manifest`, `-f` Pfad zur Manifestdatei tree.json (Standard: `./output/tree.json`)
 - `--source`, `-s` Verzeichnis der XML-Dateien (Standard: Ordner der Manifestdatei)
 - `--suffix <suffix>` für doppelte Titel (Standard: `Clone`) – wird nur verwendet, wenn der Titel bereits existiert
 
@@ -143,11 +171,7 @@ Ergebnisse Clone:
 - Duplikate beim Clone: Das Skript hängt ein Suffix an oder nummeriert weiter, bis ein eindeutiger Titel gefunden ist
 - Proxy/VPN: Sicherstellen, dass Confluence erreichbar ist
 
-## Bekannte Besonderheiten
-
-- Die Hilfeausgabe im Download-Skript zeigt „download-page.js“ – der korrekte Dateiname ist [atlassian-connect/atlassian-download.js](atlassian-connect/atlassian-download.js). Ausserdem ist die empfohlene Positionsreihenfolge <base_url> <page_id>.
-
 ## Entwicklung
 
-- Abhängigkeiten und Skripte sind in [atlassian-connect/package.json](atlassian-connect/package.json) definiert
+- Abhängigkeiten und Skripte sind in [package.json](package.json) definiert
 - Das Browserprofil wird in einem OS-Temp-Ordner wiederverwendet, sodass lokale Logins erhalten bleiben
