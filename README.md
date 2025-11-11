@@ -191,5 +191,5 @@ Ergebnisse Clone:
 
 ## Entwicklung
 
-- Abhängigkeiten und Skripte sind in [package.json](package.json) definiert
+- Abhängigkeiten und Skripte sind in [package.json](https://github.com/danielfrey63/atlassian-connect/blob/eb0663daf499b0897c4e0ee1736493dfa8aa786f/package.json) definiert
 - Das Browserprofil wird in einem OS-Temp-Ordner wiederverwendet, sodass lokale Logins erhalten bleiben
