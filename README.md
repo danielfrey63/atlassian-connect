@@ -24,6 +24,24 @@ scoop install git
 
 Alternativ kann Git von der offiziellen Webseite herunterladen und installiert werden: [https://git-scm.com](https://git-scm.com).
 
+### Installation von Node.js und npm
+
+Node.js und npm werden für die Ausführung der Skripte benötigt. Unter Windows empfiehlt sich die Installation über Scoop:
+
+```bash
+scoop install nodejs-lts
+# Version prüfen (erwartet Node.js 18+)
+node -v
+npm -v
+```
+
+Alternativ kann Node.js (inkl. npm) über die offizielle Webseite installiert werden: https://nodejs.org/en/download/
+
+Hinweis: Falls bereits eine ältere Version installiert ist, kann über Scoop ein Update durchgeführt werden:
+
+```bash
+scoop update nodejs-lts
+```
 ### Klonen des Repositories
 
 Der ausführbare Code aus dem Repository muss lokal zur Verfügung gestellt werden.
