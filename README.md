@@ -7,17 +7,18 @@ Beim Start öffnet das Skript einen Chromium-Browser mit persistentem Profil. Na
 ## Voraussetzungen
 
 ### Installation von Scoop
-  
+
 Scoop ist ein einfacher Paket-Manager. Falls nicht vorhanden, kann Scoop unter Windows über die PowerShell installiert werden:
-  
+
 ```powershell
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 irm get.scoop.sh | iex
 ```
+
 ### Installation von Git
-  
+
 Falls nicht bereits installiert, kann unter Windows Git einfach mit [Scoop](https://scoop.sh/) nachinstalliert werden:
-  
+
 ```bash
 scoop install git
 ```
@@ -42,18 +43,20 @@ Hinweis: Falls bereits eine ältere Version installiert ist, kann über Scoop ei
 ```bash
 scoop update nodejs-lts
 ```
+
 ### Klonen des Repositories
 
 Der ausführbare Code aus dem Repository muss lokal zur Verfügung gestellt werden.
 
 ```bash
-git clone git@github.com:danielfrey63/atlassian-connect.git
+git clone https://github.com/danielfrey63/atlassian-connect.git
 cd atlassian-connect
 ```
 
 ### Projektcode fertig installieren
 
 Zum Ausführen des Codes benötigen wir:
+
 - Node.js 18+ und npm
 - Internetzugang auf die Confluence-Instanz (z. B. https://confluence.my-company.ch)
 
