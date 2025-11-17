@@ -529,6 +529,38 @@ function escapeRegex(s) {
   return (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function updateXmlAttachmentReferences(xmlContent, attachmentMap) {
+  let updatedXml = xmlContent;
+  
+  // Replace ri:attachment elements with local file references
+  // Pattern: <ri:attachment ri:filename="filename.ext" />
+  for (const [originalName, localPath] of Object.entries(attachmentMap)) {
+    // Escape special XML characters in filenames
+    const escapedOriginal = originalName
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    
+    // Build regex to match ri:attachment elements with this filename
+    const pattern = new RegExp(
+      `<ri:attachment\\s+ri:filename="${escapeRegex(escapedOriginal)}"[^>]*/>`,
+      'g'
+    );
+    
+    // Replace with local path reference
+    updatedXml = updatedXml.replace(pattern, (match) => {
+      // Preserve other attributes if present, just update the filename to local path
+      return match.replace(
+        `ri:filename="${escapedOriginal}"`,
+        `ri:filename="${localPath}"`
+      );
+    });
+  }
+  
+  return updatedXml;
+}
+
 // ------------------------------
 // Core download
 // ------------------------------
@@ -576,10 +608,74 @@ async function downloadPageInternal(
 
   // Always write XML if format is xml or both
   if (format === "xml" || format === "both") {
+    let finalXml = xml;
+    const attachmentMap = {};
+    
+    // Fetch and download attachments for XML format
+    let attachments = [];
+    try {
+      attachments = await fetchAttachments(page, pageId);
+    } catch (err) {
+      console.warn(`Could not fetch attachments for XML: ${err.message}`);
+    }
+    
+    // Only create attachment directory and download if there are attachments
+    if (attachments.length > 0) {
+      const attachDirRel = path.join(parentRelPath, baseName);
+      const attachDirFull = path.resolve(destination, attachDirRel);
+      fs.mkdirSync(attachDirFull, { recursive: true });
+      console.log(`Created attachment directory: ${attachDirFull}`);
+      
+      // Download each attachment
+      for (const item of attachments) {
+        const title = item.title || "";
+        const sanitizedTitle = sanitizeFilename(title);
+        const serverUrl = item.download
+          ? `${baseUrl}${item.download}`
+          : `${baseUrl}/download/attachments/${pageId}/${encodeURIComponent(title)}`;
+        
+        if (item.download) {
+          try {
+            const { base64, contentType } = await downloadAttachmentBinary(page, serverUrl);
+            let ext = path.extname(sanitizedTitle) || "";
+            if (!ext) {
+              const ct = (contentType || "").toLowerCase();
+              if (ct.includes("png")) ext = ".png";
+              else if (ct.includes("jpeg") || ct.includes("jpg")) ext = ".jpg";
+              else if (ct.includes("gif")) ext = ".gif";
+              else if (ct.includes("webp")) ext = ".webp";
+              else if (ct.includes("svg")) ext = ".svg";
+              else if (ct.includes("pdf")) ext = ".pdf";
+              else if (ct.includes("bmp")) ext = ".bmp";
+              else ext = ".bin";
+            }
+            const baseFile = sanitizedTitle.match(/\.\w+$/) ? sanitizedTitle : sanitizedTitle + ext;
+            const localFullPath = path.join(attachDirFull, baseFile);
+            const buf = Buffer.from(base64, "base64");
+            fs.writeFileSync(localFullPath, buf);
+            
+            // Store relative path for XML reference update
+            const relPath = path.join(baseName, baseFile).replace(/\\/g, "/");
+            attachmentMap[title] = relPath;
+            
+            console.log(`Downloaded attachment for XML: ${title} -> ${localFullPath}`);
+          } catch (err) {
+            console.warn(`Failed to download attachment ${title}: ${err.message}`);
+          }
+        }
+      }
+      
+      // Update XML with local attachment references
+      if (Object.keys(attachmentMap).length > 0) {
+        finalXml = updateXmlAttachmentReferences(xml, attachmentMap);
+        console.log(`Updated ${Object.keys(attachmentMap).length} attachment reference(s) in XML`);
+      }
+    }
+    
     const xmlRelPath = path.join(parentRelPath, `${baseName}.xml`);
     const xmlFullPath = path.resolve(destination, xmlRelPath);
     fs.mkdirSync(path.dirname(xmlFullPath), { recursive: true });
-    fs.writeFileSync(xmlFullPath, xml, "utf-8");
+    fs.writeFileSync(xmlFullPath, finalXml, "utf-8");
     console.log(`Saved XML: ${xmlFullPath}`);
   }
 
