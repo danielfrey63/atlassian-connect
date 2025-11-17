@@ -489,20 +489,38 @@ async function fetchAttachments(page, pageId) {
 }
 
 async function downloadAttachmentBinary(page, fullUrl) {
-  const res = await page.evaluate(async (url) => {
-    const resp = await fetch(url, { credentials: "include" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const blob = await resp.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((acc, b) => acc + String.fromCharCode(b), "")
-    );
+  try {
+    // Use Playwright's request context instead of browser fetch to avoid response cloning issues
+    const response = await page.request.get(fullUrl);
+    
+    console.log(`    Response status: ${response.status()} ${response.statusText()}`);
+    
+    if (!response.ok()) {
+      throw new Error(`HTTP ${response.status()}: ${response.statusText()}`);
+    }
+    
+    const buffer = await response.body();
+    console.log(`    Downloaded ${buffer.length} bytes`);
+    
+    if (buffer.length === 0) {
+      throw new Error(`Response body is empty (0 bytes) - possible authentication or access issue`);
+    }
+    
+    // Convert to base64
+    const base64 = buffer.toString('base64');
+    console.log(`    Base64 length: ${base64.length}`);
+    
+    const contentType = response.headers()['content-type'] || 'application/octet-stream';
+    
     return {
       base64,
-      contentType: resp.headers.get("content-type") || "application/octet-stream",
+      size: buffer.length,
+      contentType,
     };
-  }, fullUrl);
-  return res;
+  } catch (error) {
+    console.error(`    Error downloading: ${error.message}`);
+    throw error;
+  }
 }
 
 function replaceAttachPlaceholders(markdown, replacements) {
@@ -630,13 +648,28 @@ async function downloadPageInternal(
       for (const item of attachments) {
         const title = item.title || "";
         const sanitizedTitle = sanitizeFilename(title);
-        const serverUrl = item.download
-          ? `${baseUrl}${item.download}`
-          : `${baseUrl}/download/attachments/${pageId}/${encodeURIComponent(title)}`;
+        
+        // Build URL carefully to avoid double slashes
+        let serverUrl;
+        if (item.download) {
+          // Combine baseUrl and download path, then clean up any double slashes
+          serverUrl = `${baseUrl}${item.download}`.replace(/([^:])\/\//g, '$1/');
+        } else {
+          serverUrl = `${baseUrl}/download/attachments/${pageId}/${encodeURIComponent(title)}`.replace(/([^:])\/\//g, '$1/');
+        }
         
         if (item.download) {
           try {
-            const { base64, contentType } = await downloadAttachmentBinary(page, serverUrl);
+            console.log(`  Downloading: ${title} from ${serverUrl}`);
+            const { base64, size, contentType } = await downloadAttachmentBinary(page, serverUrl);
+            
+            // Validate download
+            if (!base64 || base64.length === 0) {
+              throw new Error(`Empty response received (base64 length: ${base64?.length || 0})`);
+            }
+            
+            console.log(`  Downloaded ${size} bytes (base64 length: ${base64.length})`);
+            
             let ext = path.extname(sanitizedTitle) || "";
             if (!ext) {
               const ct = (contentType || "").toLowerCase();
@@ -651,16 +684,32 @@ async function downloadPageInternal(
             }
             const baseFile = sanitizedTitle.match(/\.\w+$/) ? sanitizedTitle : sanitizedTitle + ext;
             const localFullPath = path.join(attachDirFull, baseFile);
+            
+            // Convert base64 to buffer
             const buf = Buffer.from(base64, "base64");
+            
+            // Validate buffer
+            if (buf.length === 0) {
+              throw new Error(`Buffer conversion failed - resulted in 0 bytes (base64 length was ${base64.length})`);
+            }
+            
+            console.log(`  Writing ${buf.length} bytes to ${baseFile}`);
             fs.writeFileSync(localFullPath, buf);
+            
+            // Verify file was written
+            const stats = fs.statSync(localFullPath);
+            if (stats.size === 0) {
+              throw new Error(`File was written but has 0 bytes`);
+            }
             
             // Store relative path for XML reference update
             const relPath = path.join(baseName, baseFile).replace(/\\/g, "/");
             attachmentMap[title] = relPath;
             
-            console.log(`Downloaded attachment for XML: ${title} -> ${localFullPath}`);
+            console.log(`  ✓ Successfully saved: ${title} (${stats.size} bytes)`);
           } catch (err) {
-            console.warn(`Failed to download attachment ${title}: ${err.message}`);
+            console.error(`  ✗ Failed to download attachment ${title}: ${err.message}`);
+            console.error(`    URL: ${serverUrl}`);
           }
         }
       }
@@ -878,6 +927,20 @@ async function downloadPage(
     headless: false,
   });
   const page = await context.newPage();
+  
+  // Forward browser console logs to Node console
+  page.on('console', msg => {
+    const type = msg.type();
+    const text = msg.text();
+    if (type === 'error') {
+      console.error(`[Browser Console] ${text}`);
+    } else if (type === 'warn') {
+      console.warn(`[Browser Console] ${text}`);
+    } else if (text.includes('[Browser]')) {
+      // Only show our custom debug logs
+      console.log(text);
+    }
+  });
 
   try {
     const node = await downloadPageInternal(
