@@ -48,3 +48,7 @@ auth.json
 page_*.xml
 output
 out*
+
+# Claude Code: runtime artefacts (the config itself is tracked)
+.claude/hook-log.txt
+.claude/settings.local.json
